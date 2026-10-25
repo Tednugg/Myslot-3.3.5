@@ -347,6 +347,18 @@ local function CreateSettingMenu(opt, onChanged)
     return menu
 end
 
+-- The base64 body of an export, without the "#" header lines (which carry
+-- the export time), so two exports of the same setup compare equal.
+local function ProfilePayload(text)
+    local t = {}
+    for line in (text or ""):gmatch("[^\r\n]+") do
+        if not line:find("^%s*[#@]") then
+            t[#t + 1] = strtrim(line)
+        end
+    end
+    return table.concat(t)
+end
+
 local function AllSettingMenuIgnored(opt)
     if not opt or not opt.ignoreActionBars or not opt.ignoreMacros then
         return false
@@ -436,9 +448,20 @@ do
             end
 
             if backup then
-                table.insert(MyslotExports["backups"], { value = backup, time = time() })
-                while #MyslotExports["backups"] > IMPORT_BACKUP_COUNT do
-                    table.remove(MyslotExports["backups"], 1)
+                local backups = MyslotExports["backups"]
+                local newest = backups[#backups]
+                local newestVal = type(newest) == "table" and newest.value or newest
+                if newestVal and ProfilePayload(newestVal) == ProfilePayload(backup) then
+                    -- same setup as the last backup (e.g. importing the same
+                    -- profile again): just refresh its time
+                    if type(newest) == "table" then
+                        newest.time = time()
+                    end
+                else
+                    table.insert(backups, { value = backup, time = time() })
+                    while #backups > IMPORT_BACKUP_COUNT do
+                        table.remove(backups, 1)
+                    end
                 end
             end
 
@@ -662,8 +685,13 @@ RegEvent("ADDON_LOADED", function()
         end
     end
 
+    -- The backup entry (from `backups`) shown in the editor, if any. Kept as
+    -- the entry itself, since new imports shift backup indices.
+    local selectedBackup
+
     local function setSelected(idx)
         selectedIdx = idx
+        selectedBackup = nil
         setButtonText(idx and exports[idx] and exports[idx].name or "")
     end
 
@@ -804,7 +832,8 @@ RegEvent("ADDON_LOADED", function()
             if d.backup then
                 SetEditorText(d.backup)
                 setSelected(nil)
-                setButtonText(L["Before Last Import"])
+                selectedBackup = d.entry
+                setButtonText(d.text)
             elseif d.index then
                 selectLoadout(d.index)
             end
@@ -830,11 +859,9 @@ RegEvent("ADDON_LOADED", function()
             local b = backups[i]
             local val = type(b) == "table" and b.value or b
             local when = type(b) == "table" and b.time
-            local lbl = L["Before Last Import"]
-            if i ~= #backups or when then
-                lbl = lbl .. " (" .. (when and date("%Y-%m-%d %H:%M", when) or (L["Backup"] .. " " .. (#backups - i + 1))) .. ")"
-            end
-            displayRows[#displayRows + 1] = { backup = val, text = lbl, icon = "Interface\\Icons\\inv_scroll_04" }
+            local lbl = L["Before Last Import"] .. " - "
+                .. (when and date("%m-%d %H:%M", when) or (L["Backup"] .. " " .. (#backups - i + 1)))
+            displayRows[#displayRows + 1] = { backup = val, entry = b, text = lbl, icon = "Interface\\Icons\\inv_scroll_04" }
         end
 
         local sort = MyslotSettings.loadoutSort or "date"
@@ -980,6 +1007,24 @@ RegEvent("ADDON_LOADED", function()
                     end
                 end
                 StaticPopup_Show("MYSLOT_CONFIRM_DELETE", exports[c].name)
+            elseif selectedBackup then
+                local entry = selectedBackup
+                StaticPopupDialogs["MYSLOT_CONFIRM_DELETE"].OnAccept = function()
+                    for i = #backups, 1, -1 do
+                        if backups[i] == entry then
+                            table.remove(backups, i)
+                            break
+                        end
+                    end
+                    setSelected(nil)
+                    SetEditorText("")
+                    if list:IsShown() then
+                        UpdateList()
+                    end
+                end
+                StaticPopup_Show("MYSLOT_CONFIRM_DELETE", profileButton.label:GetText())
+            else
+                MySlot:Print(L["Select a profile or backup to delete it."])
             end
         end)
     end

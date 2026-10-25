@@ -1,0 +1,30 @@
+## Interface: 30300
+## Title: Myslot
+## Notes: Myslot is for transferring settings between accounts. Backport of v6.2.1 for 3.3.5a. Feedback farmer1992@gmail.com
+## Notes-deDE: Myslot dient zum Übertragen von Einstellungen zwischen Konten. Feedback farmer1992@gmail.com
+## Notes-ruRU: Myslot предназначен для передачи настроек между учетными записями. Обратная связь: farmer1992@gmail.com
+## Notes-zhCN: Myslot 用于在账户之间传输设置。反馈: farmer1992@gmail.com
+## Notes-zhTW: Myslot 用於在帳號之間傳輸設定。反饋: farmer1992@gmail.com
+## Author: Boshi Lian(farmer1992@gmail.com)
+## Version: v6.2.1-335
+## SavedVariables: MyslotExports
+## SavedVariablesPerCharacter: MyslotSettings
+
+libs\LibStub\LibStub.lua
+libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
+
+libs\base64.lua
+libs\crc32.lua
+libs\lua-pb\lua-pb.xml
+
+protobuf\Myslot.lua
+
+compat.lua
+event.lua
+locales.lua
+keys.lua
+Myslot.lua
+gui.lua
+options.lua
